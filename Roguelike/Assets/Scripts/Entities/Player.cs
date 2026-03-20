@@ -14,7 +14,6 @@ public class Player : CellObject, IEnergyLoss
     };
 
     [SerializeField] private int _endurance = 2;
-    [SerializeField] private int _vigor = 5;
     [SerializeField] private float _moveSpeed = 5.0f;
     [SerializeField] private Animator _animator;
     private Vector2Int _cellPos;

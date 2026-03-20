@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -28,6 +29,14 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private WallObject[] _wallPrefab;
     [SerializeField] private FoodObject[] _foodPrefab;
     [SerializeField] private LunchboxObject[] _lunchboxPrefab;
+
+    [Header("Entity Points")]
+    [SerializeField] private Transform _playerPoint;
+    [SerializeField] private Transform _enemyPoint;
+    [SerializeField] private Transform _exitPoint;
+    [SerializeField] private Transform _wallPoint;
+    [SerializeField] private Transform _foodPoint;
+    [SerializeField] private Transform _lunchboxPoint;
 
     [Header("Tiles Data")]
     [SerializeField] private Tile[] _groundTiles;
@@ -95,7 +104,8 @@ public class BoardManager : MonoBehaviour
 
                 if (cellData.ContainedObject != null)
                 {
-                    Destroy(cellData.ContainedObject.gameObject);
+                    //Destroy(cellData.ContainedObject.gameObject);
+                    SingletonHub.Instance.Get<ObjectPool>().ReturnToPool(cellData.ContainedObject.gameObject);
                 }
 
                 SetCellTile(new Vector2Int(x, y), null);
@@ -114,9 +124,12 @@ public class BoardManager : MonoBehaviour
     public void GeneratePlayer()
     {
         Vector2Int startCoord = new Vector2Int(1, 1);
-        Player newPlayer = Instantiate(_playerPrefab);
+        Player newPlayer = SingletonHub.Instance.Get<ObjectPool>()
+                            .GetPooledObject(_playerPrefab.gameObject, Vector3.zero, Quaternion.identity, _playerPoint)
+                            .GetComponent<Player>();
+
         AddObject(newPlayer, startCoord);
-        newPlayer.MoveTo(startCoord, true);
+        //newPlayer.MoveTo(startCoord, true);
         GetTargetPosition = () => newPlayer.Cell;
     }
 
@@ -130,7 +143,10 @@ public class BoardManager : MonoBehaviour
             Vector2Int coord = _emptyCellsList[randomCell];
             _emptyCellsList.RemoveAt(randomCell);
 
-            Enemy newEnemy = Instantiate(_enemyPrefab);
+            Enemy newEnemy = SingletonHub.Instance.Get<ObjectPool>()
+                                .GetPooledObject(_enemyPrefab.gameObject, Vector3.zero, Quaternion.identity, _enemyPoint)
+                                .GetComponent<Enemy>();
+
             AddObject(newEnemy, coord);
         }
     }
@@ -144,7 +160,10 @@ public class BoardManager : MonoBehaviour
             Vector2Int coord = _emptyCellsList[randomCell];
 
             _emptyCellsList.RemoveAt(randomCell);
-            FoodObject newFood = Instantiate(_foodPrefab[randomFood]);
+            FoodObject newFood = SingletonHub.Instance.Get<ObjectPool>()
+                                    .GetPooledObject(_foodPrefab[randomFood].gameObject, Vector3.zero, Quaternion.identity, _foodPoint)
+                                    .GetComponent<FoodObject>();
+
             AddObject(newFood, coord);
         }
     }
@@ -159,7 +178,10 @@ public class BoardManager : MonoBehaviour
             Vector2Int coord = _emptyCellsList[randomCell];
 
             _emptyCellsList.RemoveAt(randomCell);
-            LunchboxObject newLunchbox = Instantiate(_lunchboxPrefab[randomLunchbox]);
+            LunchboxObject newLunchbox = SingletonHub.Instance.Get<ObjectPool>()
+                                            .GetPooledObject(_lunchboxPrefab[randomLunchbox].gameObject, Vector3.zero, Quaternion.identity, _lunchboxPoint)
+                                            .GetComponent<LunchboxObject>();
+
             AddObject(newLunchbox, coord);
         }
     }
@@ -174,7 +196,10 @@ public class BoardManager : MonoBehaviour
             Vector2Int coord = _emptyCellsList[randomCell];
 
             _emptyCellsList.RemoveAt(randomCell);
-            WallObject newWall = Instantiate(_wallPrefab[randomWall]);
+            WallObject newWall = SingletonHub.Instance.Get<ObjectPool>()
+                                    .GetPooledObject(_wallPrefab[randomWall].gameObject, Vector3.zero, Quaternion.identity, _wallPoint)
+                                    .GetComponent<WallObject>();
+
             AddObject(newWall, coord);
         }
     }
@@ -182,7 +207,10 @@ public class BoardManager : MonoBehaviour
     public void GenerateExit()
     {
         Vector2Int endCoord = new Vector2Int(_width - 2, _height - 2);
-        AddObject(Instantiate(_exitPrefab), endCoord);
+        ExitObject newExit = SingletonHub.Instance.Get<ObjectPool>()
+                                .GetPooledObject(_exitPrefab.gameObject, Vector3.zero, Quaternion.identity, _exitPoint)
+                                .GetComponent<ExitObject>();
+        AddObject(newExit, endCoord);
         _emptyCellsList.Remove(endCoord);
     }
 
@@ -210,3 +238,27 @@ public class BoardManager : MonoBehaviour
         return _tilemap.GetTile<Tile>(new Vector3Int(cellIndex.x, cellIndex.y, 0));
     }
 }
+
+#if UNITY_EDITOR
+[CustomEditor(typeof(BoardManager))]
+public class BoardGeneratorEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        DrawDefaultInspector();
+        BoardManager board = (BoardManager)target;
+
+        if (GUILayout.Button("Generate Board"))
+        {
+            board.Init(1);
+            EditorUtility.SetDirty(board);
+        }
+
+        if (GUILayout.Button("Clean Board"))
+        {
+            board.Clean();
+            EditorUtility.SetDirty(board);
+        }
+    }
+}
+#endif
